@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Transaction</title>
+</head>
+
+<body>
+    <h1>Edit Transaction</h1>
+    <form id="editTransactionForm">
+        <input type="hidden" id="transactionId" name="transactionId">
+
+        <label for="indentNo">Indent No:</label>
+        <input type="text" id="indentNo" name="indentNo" required>
+
+        <label for="year">Year:</label>
+        <select id="year" name="year" required>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <!-- Add more years as needed -->
+        </select>
+
+        <label for="month">Month:</label>
+        <select id="month" name="month" required>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <!-- Add more months as needed -->
+        </select>
+
+        <label for="currency">Currency:</label>
+        <select id="currency" name="currency" required>
+            <option value="USD">USD</option>
+            <option value="EURO">EURO</option>
+            <option value="POUND">POUND</option>
+        </select>
+
+        <label for="conversionRate">Conversion Rate:</label>
+        <input type="number" id="conversionRate" name="conversionRate" required>
+
+        <label for="baseValue">Base Value:</label>
+        <input type="number" id="baseValue" name="baseValue" required>
+
+        <label for="value">Value:</label>
+        <input type="text" id="value" name="value" readonly>
+
+        <label for="reimbursement">Reimbursement:</label>
+        <input type="number" id="reimbursement" name="reimbursement" required>
+
+        <label for="harringTransport">Harring and Transport:</label>
+        <input type="number" id="harringTransport" name="harringTransport" required>
+
+        <label for="vat">VAT:</label>
+        <input type="number" id="vat" name="vat" required>
+
+        <label for="nat">NAT:</label>
+        <input type="number" id="nat" name="nat" required>
+
+        <label for="advance">Advance:</label>
+        <input type="number" id="advance" name="advance" required>
+
+        <label for="commission">Commission:</label>
+        <input type="number" id="commission" name="commission" required>
+
+        <label for="total">Total:</label>
+        <input type="text" id="total" name="total" readonly>
+
+        <label for="complexReference">Complex Reference:</label>
+        <input type="text" id="complexReference" name="complexReference">
+
+        <label for="item">Item:</label>
+        <input type="text" id="item" name="item">
+
+        <label for="supplier">Supplier:</label>
+        <input type="text" id="supplier" name="supplier">
+
+        <button type="submit">Update</button>
+    </form>
+
+    <script>
+        // Wrap the code in an IIFE
+        (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const indentNo = urlParams.get('indentNo').trim(); // Trim whitespace
+            console.log('Trimmed Indent No:', indentNo); // Log the trimmed value
+
+            // Check if indentNo is valid
+            if (!indentNo) {
+                alert('Indent No is missing. Please provide a valid Indent No.');
+                window.location.href = 'dashboard.html'; // Redirect to the dashboard
+                return; // Exit the function
+            }
+
+            // Fetch the existing transaction data
+            fetch(`/api/transactions/${encodeURIComponent(indentNo)}`) // Encode the trimmed indentNo
+                .then(response => {
+                    console.log('Response Status:', response.status); // Log the response status
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Fetched Data:', data);
+                    document.getElementById('transactionId').value = data.Id || '';
+                    document.getElementById('indentNo').value = data.IndentNo.trim() || ''; // Trimmed Indent No
+                    document.getElementById('year').value = data.Year || '';
+                    document.getElementById('month').value = data.Month || '';
+                    document.getElementById('currency').value = data.Currency || '';
+                    document.getElementById('conversionRate').value = data.ConversionRate || '';
+                    document.getElementById('baseValue').value = data.BaseValue || '';
+                    document.getElementById('value').value = data.Value || '';
+                    document.getElementById('reimbursement').value = data.Reimbursement || '';
+                    document.getElementById('harringTransport').value = data.HarringTransport || '';
+                    document.getElementById('vat').value = data.Vat || '';
+                    document.getElementById('nat').value = data.Nat || '';
+                    document.getElementById('advance').value = data.Advance || '';
+                    document.getElementById('commission').value = data.Commission || '';
+                    document.getElementById('total').value = data.Total || '';
+                    document.getElementById('complexReference').value = data.ComplexReference || '';
+                    document.getElementById('item').value = data.Item || '';
+                    document.getElementById('supplier').value = data.Supplier.trim() || ''; // Trimmed Supplier
+                })
+                .catch(error => {
+                    console.error('Error fetching transaction:', error);
+                    alert('Error fetching transaction data. Please check the console for details.');
+                });
+
+            // Remaining code for handling form input and submission...
+            document.getElementById('editTransactionForm').addEventListener('input', function () {
+                const conversionRate = parseFloat(document.getElementById('conversionRate').value) || 0;
+                const baseValue = parseFloat(document.getElementById('baseValue').value) || 0;
+                const value = conversionRate * baseValue;
+                document.getElementById('value').value = value.toFixed(2);
+
+                const reimbursement = parseFloat(document.getElementById('reimbursement').value) || 0;
+                const harringTransport = parseFloat(document.getElementById('harringTransport').value) || 0;
+                const vat = parseFloat(document.getElementById('vat').value) || 0;
+                const nat = parseFloat(document.getElementById('nat').value) || 0;
+                const advance = parseFloat(document.getElementById('advance').value) || 0;
+                const commission = parseFloat(document.getElementById('commission').value) || 0;
+
+                const total = value + reimbursement + harringTransport + vat + nat + advance + commission;
+                document.getElementById('total').value = total.toFixed(2);
+            });
+
+            document.getElementById('editTransactionForm').addEventListener('submit', function (event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+                const transactionId = document.getElementById('transactionId').value; // Retrieve transactionId from the form
+
+                // Send the updated transaction data to the server
+                fetch(`/api/transactions/${encodeURIComponent(indentNo)}`, { // Encode the indentNo
+                    method: 'PUT',
+                    body: formData // Correctly separate the body from the method
+                })
+                    .then(response => {
+                        console.log('Response Status on Update:', response.status); // Log the response status
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Transaction updated successfully:', data);
+                        alert('Transaction updated successfully!');
+                        window.location.href = 'dashboard.html'; // Redirect to the dashboard after successful update
+                    })
+                    .catch(error => {
+                        console.error('Error updating transaction:', error);
+                        alert('Error updating transaction. Please check the console for details.');
+                    });
+            });
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* Modal styles */
+        .modal {
+            display: none;
+            /* Hidden by default */
+            position: fixed;
+            /* Stay in place */
+            z-index: 1;
+            /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            /* Full width */
+            height: 100%;
+            /* Full height */
+            overflow: auto;
+            /* Enable scroll if needed */
+            background-color: rgb(0, 0, 0);
+            /* Fallback color */
+            background-color: rgba(0, 0, 0, 0.4);
+            /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            /* Could be more or less, depending on screen size */
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <ul>
+            <li><a href="form.html">Form</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+        </ul>
+    </nav>
+    <h1>Transaction Dashboard</h1>
+    <table id="transactionsTable">
+        <thead>
+            <tr>
+                <th>Indent No</th>
+                <th>Year</th>
+                <th>Month</th>
+                <th>Currency</th>
+                <th>Conversion Rate</th>
+                <th>Base Value</th>
+                <th>Value</th>
+                <th>Reimbursement</th>
+                <th>Harring Transport</th>
+                <th>VAT</th>
+                <th>NAT</th>
+                <th>Advance</th>
+                <th>Commission</th>
+                <th>Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be populated here -->
+        </tbody>
+    </table>
+
+    <!-- Modal for displaying details -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2>Transaction Details</h2>
+            <p id="modalDetails"></p>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/transactions')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('transactionsTable').getElementsByTagName('tbody')[0];
+                data.forEach(transaction => {
+                    const row = tableBody.insertRow();
+                    row.insertCell(0).innerText = transaction.IndentNo;
+                    row.insertCell(1).innerText = transaction.Year;
+                    row.insertCell(2).innerText = transaction.Month;
+                    row.insertCell(3).innerText = transaction.Currency;
+                    row.insertCell(4).innerText = transaction.ConversionRate;
+                    row.insertCell(5).innerText = transaction.BaseValue;
+                    row.insertCell(6).innerText = transaction.Value;
+                    row.insertCell(7).innerText = transaction.Reimbursement;
+                    row.insertCell(8).innerText = transaction.HarringTransport;
+                    row.insertCell(9).innerText = transaction.Vat;
+                    row.insertCell(10).innerText = transaction.Nat;
+                    row.insertCell(11).innerText = transaction.Advance;
+                    row.insertCell(12).innerText = transaction.Commission;
+                    row.insertCell(13).innerText = transaction.Total;
+
+                    const actionsCell = row.insertCell(14);
+                    const editButton = document.createElement('button');
+                    editButton.innerText = 'Edit';
+                    editButton.onclick = () => editTransaction(transaction.IndentNo);
+                    actionsCell.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerText = 'Delete';
+                    deleteButton.onclick = () => deleteTransaction(transaction.IndentNo);
+                    actionsCell.appendChild(deleteButton);
+
+                    // Create Details Button
+                    const detailsButton = document.createElement('button');
+                    detailsButton.innerText = 'Details';
+                    detailsButton.onclick = () => showDetails(transaction.ComplexReference, transaction.Item, transaction.Supplier);
+                    actionsCell.appendChild(detailsButton); // Add to the actions cell
+                });
+            });
+
+        function showDetails(complexReference, item, supplier) {
+            const modal = document.getElementById('detailsModal');
+            const modalDetails = document.getElementById('modalDetails');
+            modalDetails.innerHTML = `Complex Reference: ${complexReference}<br>Item: ${item}<br>Supplier: ${supplier}`;
+            modal.style.display = "block"; // Show the modal
+        }
+
+        // Close the modal when the user clicks on <span> (x)
+        document.getElementById('closeModal').onclick = function () {
+            document.getElementById('detailsModal').style.display = "none";
+        }
+
+        // Close the modal when the user clicks anywhere outside of the modal
+        window.onclick = function (event) {
+            const modal = document.getElementById('detailsModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function editTransaction(indentNo) {
+            window.location.href = `edit.html?indentNo=${indentNo}`;
+        }
+
+        function deleteTransaction(indentNo) {
+            // Trim whitespace from indentNo
+            const trimmedIndentNo = indentNo.trim(); // Ensure no extra spaces
+            console.log('Deleting transaction with IndentNo:', trimmedIndentNo); // Log the trimmed indentNo for debugging
+
+            fetch(`/api/transactions/${encodeURIComponent(trimmedIndentNo)}`, { // Encode the indentNo
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    alert('Transaction deleted successfully!');
+                    location.reload(); // Reload the dashboard to reflect changes
+                } else {
+                    return response.text().then(text => {
+                        console.error('Error response:', text); // Log the error response
+                        alert('Error deleting transaction: ' + text);
+                    });
+                }
+            }).catch(error => {
+                console.error('Fetch error:', error); // Log any fetch errors
+                alert('Error deleting transaction: ' + error.message);
+            });
+        }
+    </script>
+</body>
+
+</html>
