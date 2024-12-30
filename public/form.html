@@ -109,17 +109,39 @@
         });
 
         document.getElementById('transactionForm').addEventListener('submit', function (event) {
-            event.preventDefault();
+            event.preventDefault(); // Prevent default form submission
             const formData = new FormData(this);
-            console.log('Form Data:', Array.from(formData.entries())); // Log form data for debugging
-            fetch('/api/transactions', {
-                method: 'POST',
-                body: formData
-            }).then(response => response.json())
-                .then(data => {
-                    alert('Transaction saved successfully!');
-                }).catch(error => {
-                    console.error('Error:', error);
+            const indentNo = formData.get('indentNo').trim(); // Get the Indent No
+
+            // Check if the Indent No already exists
+            fetch(`/api/transactions/${encodeURIComponent(indentNo)}`)
+                .then(response => {
+                    if (response.ok) {
+                        return response.json(); // If the Indent No exists, return the existing transaction
+                    } else {
+                        // If the response is not ok, it means the Indent No does not exist
+                        return null; // Proceed to submit the form
+                    }
+                })
+                .then(existingTransaction => {
+                    if (existingTransaction) {
+                        // If the transaction exists, alert the user
+                        alert('This Indent No already exists in the database. Please use a different Indent No.');
+                    } else {
+                        // If the transaction does not exist, submit the form
+                        fetch('/api/transactions', {
+                            method: 'POST',
+                            body: formData
+                        }).then(response => response.json())
+                            .then(data => {
+                                alert('Transaction saved successfully!');
+                            }).catch(error => {
+                                console.error('Error:', error);
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking Indent No:', error);
                 });
         });
 
