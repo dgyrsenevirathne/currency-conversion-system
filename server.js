@@ -32,6 +32,19 @@ app.post('/api/transactions', (req, res) => {
     // Log the parameters being sent to the SQL query
     console.log('Parameters:', [indentNo, year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier]);
 
+    // Log the ConversionRate change
+    const logQuery = `
+        INSERT INTO ConversionRateLogs (IndentNo, OldConversionRate, NewConversionRate, ChangedBy)
+        VALUES (?, NULL, ?, 'System')
+    `;
+
+    sql.query(connectionString, logQuery, [indentNo, conversionRate], (err, result) => {
+        if (err) {
+            console.error('Error logging ConversionRate change:', err);
+        }
+    });
+
+    // Insert the new transaction
     const query = `INSERT INTO Transactions (IndentNo, Year, Month, Currency, ConversionRate, BaseValue, Value, Reimbursement, HarringTransport, Vat, Nat, Advance, Commission, Total, ComplexReference, Item, Supplier) 
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
@@ -105,24 +118,48 @@ app.put('/api/transactions/:indentNo', (req, res) => {
     const indentNo = req.params.indentNo.trim(); // Trim whitespace from indentNo
     const { year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier } = req.body;
 
-    const query = `UPDATE Transactions SET 
-                   Year = ?, Month = ?, Currency = ?, ConversionRate = ?, BaseValue = ?, 
-                   Value = ?, Reimbursement = ?, HarringTransport = ?, Vat = ?, Nat = ?, 
-                   Advance = ?, Commission = ?, Total = ?, ComplexReference = ?, Item = ?, Supplier = ? 
-                    WHERE TRIM(IndentNo) = TRIM(?)`;
-
-    // Log the query and parameters
-    console.log('Executing query:', query, 'with params:', [year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier, indentNo]);
-
-    sql.query(connectionString, query, [year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier, indentNo], (err, result) => {
+    // Fetch the old ConversionRate
+    const fetchOldRateQuery = 'SELECT ConversionRate FROM Transactions WHERE TRIM(IndentNo) = TRIM(?)';
+    sql.query(connectionString, fetchOldRateQuery, [indentNo], (err, result) => {
         if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Error updating transaction' }); // Return JSON error
+            console.error('Error fetching old ConversionRate:', err);
+            return res.status(500).json({ message: 'Error updating transaction' });
         }
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Transaction not found' }); // Return JSON for not found
-        }
-        res.json({ success: true });
+
+        const oldConversionRate = result[0]?.ConversionRate || null;
+
+        // Log the ConversionRate change
+        const logQuery = `
+            INSERT INTO ConversionRateLogs (IndentNo, OldConversionRate, NewConversionRate, ChangedBy)
+            VALUES (?, ?, ?, 'System')
+        `;
+
+        sql.query(connectionString, logQuery, [indentNo, oldConversionRate, conversionRate], (err, result) => {
+            if (err) {
+                console.error('Error logging ConversionRate change:', err);
+            }
+        });
+
+        // Update the transaction
+        const updateQuery = `UPDATE Transactions SET 
+                             Year = ?, Month = ?, Currency = ?, ConversionRate = ?, BaseValue = ?, 
+                             Value = ?, Reimbursement = ?, HarringTransport = ?, Vat = ?, Nat = ?, 
+                             Advance = ?, Commission = ?, Total = ?, ComplexReference = ?, Item = ?, Supplier = ? 
+                             WHERE TRIM(IndentNo) = TRIM(?)`;
+
+        // Log the query and parameters
+        console.log('Executing query:', updateQuery, 'with params:', [year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier, indentNo]);
+
+        sql.query(connectionString, updateQuery, [year, month, currency, conversionRate, baseValue, value, reimbursement, harringTransport, vat, nat, advance, commission, total, complexReference, item, supplier, indentNo], (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: 'Error updating transaction' }); // Return JSON error
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: 'Transaction not found' }); // Return JSON for not found
+            }
+            res.json({ success: true });
+        });
     });
 });
 // Start the server
